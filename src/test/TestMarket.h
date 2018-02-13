@@ -109,6 +109,9 @@ class TestMarket
 
     void checkCurrentOffers();
 
+    TestMarketOffer newTrade(TestAccount& account, OfferState const& state,
+                            OfferState const& finishedState = OfferState::SAME);
+
   private:
     Application& mApp;
     std::map<OfferKey, OfferState> mOffers;

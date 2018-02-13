@@ -256,4 +256,17 @@ TestMarket::checkState(std::map<OfferKey, OfferState> const& offers,
         REQUIRE(!txtest::loadOffer(o.sellerID, o.offerID, mApp, false));
     }
 }
+
+TestMarketOffer
+TestMarket::newTrade(TestAccount& account, OfferState const& state,
+                     OfferState const& finishedState)
+{
+    auto expectedEffect = NEW_TRADE_CREATED;
+    auto offerId = account.newTrade(0, state.selling, state.buying, state.price,
+                                  state.amount, expectedEffect);
+
+    return {{account, offerId},
+            finishedState == OfferState::SAME ? state : finishedState};                                  
+}
+
 }

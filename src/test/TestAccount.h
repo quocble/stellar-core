@@ -63,6 +63,11 @@ class TestAccount
                 ManageOfferEffect expectedEffect = MANAGE_OFFER_CREATED);
 
     uint64_t
+    newTrade(uint64_t offerID, Asset const& selling, Asset const& buying,
+                Price const& price, int64_t amount,
+                NewTradeEffect expectedEffect = NEW_TRADE_CREATED);
+
+    uint64_t
     createPassiveOffer(Asset const& selling, Asset const& buying,
                        Price const& price, int64_t amount,
                        ManageOfferEffect expectedEffect = MANAGE_OFFER_CREATED);

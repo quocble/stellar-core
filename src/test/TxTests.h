@@ -102,6 +102,9 @@ Operation manageOffer(uint64 offerId, Asset const& selling, Asset const& buying,
 Operation createPassiveOffer(Asset const& selling, Asset const& buying,
                              Price const& price, int64_t amount);
 
+Operation newTrade(uint64 offerId, Asset const& selling, Asset const& buying,
+            Price const& price, int64_t amount);
+
 // returns the ID of the new offer if created
 uint64_t applyManageOffer(Application& app, uint64 offerId,
                           SecretKey const& source, Asset const& selling,
@@ -115,6 +118,12 @@ uint64_t applyCreatePassiveOffer(Application& app, SecretKey const& source,
                                  Price const& price, int64_t amount,
                                  SequenceNumber seq,
                                  ManageOfferEffect expectedEffect);
+
+uint64_t applyNewTrade(Application& app, uint64 offerId,
+                          SecretKey const& source, Asset const& selling,
+                          Asset const& buying, Price const& price,
+                          int64_t amount, SequenceNumber seq,
+                          NewTradeEffect expectedEffect);
 
 Operation setOptions(AccountID* inflationDest, uint32_t* setFlags,
                      uint32_t* clearFlags, ThresholdSetter* thrs,

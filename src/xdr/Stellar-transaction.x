@@ -25,7 +25,8 @@ enum OperationType
     ALLOW_TRUST = 7,
     ACCOUNT_MERGE = 8,
     INFLATION = 9,
-    MANAGE_DATA = 10
+    MANAGE_DATA = 10,
+    NEW_TRADE = 100
 };
 
 /* CreateAccount
@@ -114,6 +115,68 @@ struct CreatePassiveOfferOp
     Asset buying;  // B
     int64 amount;  // amount taker gets. if set to 0, delete the offer
     Price price;   // cost of A in terms of B
+};
+
+
+
+struct TradeTransaction
+{
+    // account used to run the transaction
+    AccountID sourceAccount;
+
+    // the fee the sourceAccount will pay
+    uint32 fee;
+
+    // sequence number to consume in the account
+    SequenceNumber seqNum;
+
+    ManageOfferOp operation;
+
+    // reserved for future use
+    union switch (int v)
+    {
+    case 0:
+        void;
+    }
+    ext;
+};
+
+struct TradeTransactionSignaturePayload {
+    Hash networkId;
+    union switch (EnvelopeType type)
+    {
+    case ENVELOPE_TYPE_TX:
+          TradeTransaction tx;
+    /* All other values of type are invalid */
+    } taggedTransaction;
+};
+
+/* A TransactionEnvelope wraps a transaction with signatures. */
+struct TradeTransactionEnvelope
+{
+    TradeTransaction tx;
+    /* Each decorated signature is a signature over the SHA256 hash of
+     * a TransactionSignaturePayload */
+    DecoratedSignature
+    signatures<20>;
+};
+
+/* Create a new trade offer in the blockchain, signed by the exchange key
+
+Threshold: med
+
+Result: ManageOfferResult
+
+*/
+struct NewTradeOp
+{
+    Asset selling;
+    Asset buying;
+    int64 amount; // amount being sold. if set to 0, delete the offer
+    Price price;  // price of thing being sold in terms of what you are buying
+
+    TradeTransactionEnvelope buyer;
+    TradeTransactionEnvelope seller;
 };
 
 /* Set Account Options
@@ -253,6 +316,9 @@ struct Operation
         void;
     case MANAGE_DATA:
         ManageDataOp manageDataOp;
+    case NEW_TRADE:
+        NewTradeOp newTradeOp;
+
     }
     body;
 };
@@ -508,6 +574,44 @@ default:
     void;
 };
 
+/******* NewTrade Result ********/
+
+enum NewTradeResultCode
+{
+    // codes considered as "success" for the operation
+    NEW_TRADE_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    NEW_TRADE_MALFORMED = -1,     // generated offer would be invalid
+    NEW_TRADE_SELL_NO_TRUST = -2, // no trust line for what we're selling
+    NEW_TRADE_BUY_NO_TRUST = -3,  // no trust line for what we're buying
+    NEW_TRADE_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
+    NEW_TRADE_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
+    NEW_TRADE_LINE_FULL = -6,      // can't receive more of what it's buying
+    NEW_TRADE_UNDERFUNDED = -7,    // doesn't hold what it's trying to sell
+    NEW_TRADE_CROSS_SELF = -8,     // would cross an offer from the same user
+    NEW_TRADE_SELL_NO_ISSUER = -9, // no issuer for what we're selling
+    NEW_TRADE_BUY_NO_ISSUER = -10, // no issuer for what we're buying
+
+    // update errors
+    NEW_TRADE_NOT_FOUND = -11, // offerID does not match an existing offer
+
+    NEW_TRADE_LOW_RESERVE = -12 // not enough funds to create a new Offer
+};
+
+enum NewTradeEffect
+{
+    NEW_TRADE_CREATED = 0,
+};
+
+union NewTradeResult switch (NewTradeResultCode code)
+{
+case NEW_TRADE_SUCCESS:
+    void;
+default:
+    void;
+};
+
 /******* SetOptions Result ********/
 
 enum SetOptionsResultCode
@@ -683,6 +787,8 @@ case opINNER:
         InflationResult inflationResult;
     case MANAGE_DATA:
         ManageDataResult manageDataResult;
+    case NEW_TRADE:
+        NewTradeResult newTradeResult;        
     }
     tr;
 default:

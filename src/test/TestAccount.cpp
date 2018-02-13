@@ -206,6 +206,16 @@ TestAccount::createPassiveOffer(Asset const& selling, Asset const& buying,
                                    expectedEffect);
 }
 
+uint64_t
+TestAccount::newTrade(uint64_t offerID, Asset const& selling,
+                         Asset const& buying, Price const& price,
+                         int64_t amount, NewTradeEffect expectedEffect)
+{
+    return applyNewTrade(mApp, offerID, getSecretKey(), selling, buying,
+                            price, amount, nextSequenceNumber(),
+                            expectedEffect);
+}
+
 void
 TestAccount::pay(PublicKey const& destination, int64_t amount)
 {

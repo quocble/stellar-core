@@ -395,6 +395,20 @@ manageOffer(uint64 offerId, Asset const& selling, Asset const& buying,
     return op;
 }
 
+Operation
+newTrade(uint64 offerId, Asset const& selling, Asset const& buying,
+            Price const& price, int64_t amount)
+{
+    Operation op;
+    op.body.type(NEW_TRADE);
+    op.body.newTradeOp().amount = amount;
+    op.body.newTradeOp().selling = selling;
+    op.body.newTradeOp().buying = buying;
+    op.body.newTradeOp().price = price;
+
+    return op;
+}
+
 static ManageOfferResult
 applyCreateOfferHelper(Application& app, uint64 offerId,
                        SecretKey const& source, Asset const& selling,
@@ -537,6 +551,48 @@ applyCreatePassiveOffer(Application& app, SecretKey const& source,
 
     return success.effect() == MANAGE_OFFER_CREATED ? success.offer().offerID
                                                     : 0;
+}
+
+uint64_t
+applyNewTrade(Application& app, uint64 offerId, SecretKey const& source,
+                 Asset const& selling, Asset const& buying, Price const& price,
+                 int64_t amount, SequenceNumber seq,
+                 NewTradeEffect expectedEffect)
+{
+
+    auto lastGeneratedID =
+        app.getLedgerManager().getCurrentLedgerHeader().idPool;
+    auto expectedOfferID = lastGeneratedID + 1;
+    if (offerId != 0)
+    {
+        expectedOfferID = offerId;
+    }
+
+    auto op = newTrade(offerId, selling, buying, price, amount);
+    auto tx = transactionFromOperations(app, source, seq, {op});
+
+    try
+    {
+        applyTx(tx, app);
+    }
+    catch (...)
+    {
+        REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool ==
+                lastGeneratedID);
+        throw;
+    }
+
+    auto& results = tx->getResult().result.results();
+
+    REQUIRE(results.size() == 1);
+
+    auto& newTradeResult = results[0].tr().newTradeResult();
+
+    OfferFrame::pointer offer;
+
+    // auto& success = newTradeResult.success().offer;
+    REQUIRE(newTradeResult.code() == NEW_TRADE_CREATED);
+    return 0;
 }
 
 Operation
