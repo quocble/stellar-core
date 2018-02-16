@@ -258,11 +258,11 @@ TestMarket::checkState(std::map<OfferKey, OfferState> const& offers,
 }
 
 TestMarketOffer
-TestMarket::newTrade(TestAccount& account, OfferState const& state,
-                     OfferState const& finishedState)
+TestMarket::newTrade(TestAccount& account, TestAccount& a, TestAccount& b, 
+                    OfferState const& state, OfferState const& finishedState)
 {
     auto expectedEffect = NEW_TRADE_CREATED;
-    auto offerId = account.newTrade(0, state.selling, state.buying, state.price,
+    auto offerId = account.newTrade(0, a, b, state.selling, state.buying, state.price,
                                   state.amount, expectedEffect);
 
     return {{account, offerId},

@@ -109,7 +109,7 @@ class TestMarket
 
     void checkCurrentOffers();
 
-    TestMarketOffer newTrade(TestAccount& account, OfferState const& state,
+    TestMarketOffer newTrade(TestAccount& account, TestAccount& a, TestAccount& b, OfferState const& state,
                             OfferState const& finishedState = OfferState::SAME);
 
   private:

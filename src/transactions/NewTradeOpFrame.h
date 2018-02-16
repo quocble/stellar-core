@@ -15,7 +15,16 @@ class NewTradeOpFrame : public OperationFrame
     TrustFrame::pointer mSheepLineA;
     TrustFrame::pointer mWheatLineA;
 
-    OfferFrame::pointer mSellSheepOffer;
+    TrustFrame::pointer mSheepLineB;
+    TrustFrame::pointer mWheatLineB;
+
+    AccountFrame::pointer mAccountA;
+    AccountFrame::pointer mAccountB;
+
+    bool validateAccount(AccountID const&accountId, medida::MetricsRegistry& metrics,
+                                    Database& db, LedgerDelta& delta,
+                                    TrustFrame::pointer &trustLineWheat,
+                                    TrustFrame::pointer &trustLineSheep);
 
     bool checkOfferValid(medida::MetricsRegistry& metrics, Database& db,
                          LedgerDelta& delta);
@@ -27,12 +36,6 @@ class NewTradeOpFrame : public OperationFrame
     }
 
     NewTradeOp const& mNewtrade;
-
-    // OfferEntry buildOffer(AccountID const& account, ManageOfferOp const& op,
-    //                       uint32 flags);
-
-  protected:
-    bool mPassive;
 
   public:
     NewTradeOpFrame(Operation const& op, OperationResult& res,
@@ -47,5 +50,6 @@ class NewTradeOpFrame : public OperationFrame
     {
         return res.tr().manageOfferResult().code();
     }
+    
 };
 }

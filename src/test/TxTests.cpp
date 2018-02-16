@@ -396,7 +396,8 @@ manageOffer(uint64 offerId, Asset const& selling, Asset const& buying,
 }
 
 Operation
-newTrade(uint64 offerId, Asset const& selling, Asset const& buying,
+newTrade(uint64 offerId, SecretKey const& a, SecretKey const& b,  
+            Asset const& selling, Asset const& buying,
             Price const& price, int64_t amount)
 {
     Operation op;
@@ -406,6 +407,19 @@ newTrade(uint64 offerId, Asset const& selling, Asset const& buying,
     op.body.newTradeOp().buying = buying;
     op.body.newTradeOp().price = price;
 
+    TradeTransactionEnvelope buyer;
+    TradeTransaction buyerTx;
+    buyerTx.sourceAccount = a.getPublicKey();
+    buyer.tx = buyerTx;
+
+    TradeTransactionEnvelope seller;
+    TradeTransaction sellerTx;
+    sellerTx.sourceAccount = b.getPublicKey();
+    seller.tx = sellerTx;
+
+    op.body.newTradeOp().buyer = buyer;
+    op.body.newTradeOp().seller = seller;
+    
     return op;
 }
 
@@ -555,6 +569,7 @@ applyCreatePassiveOffer(Application& app, SecretKey const& source,
 
 uint64_t
 applyNewTrade(Application& app, uint64 offerId, SecretKey const& source,
+                 SecretKey const& a, SecretKey const& b,  
                  Asset const& selling, Asset const& buying, Price const& price,
                  int64_t amount, SequenceNumber seq,
                  NewTradeEffect expectedEffect)
@@ -568,18 +583,20 @@ applyNewTrade(Application& app, uint64 offerId, SecretKey const& source,
         expectedOfferID = offerId;
     }
 
-    auto op = newTrade(offerId, selling, buying, price, amount);
+    auto op = newTrade(offerId, a, b, selling, buying, price, amount);
     auto tx = transactionFromOperations(app, source, seq, {op});
 
     try
     {
         applyTx(tx, app);
     }
-    catch (...)
+    catch (std::runtime_error &e)
     {
+        LOG(ERROR) << "Exception " << ", because: " << e.what();
+
         REQUIRE(app.getLedgerManager().getCurrentLedgerHeader().idPool ==
                 lastGeneratedID);
-        throw;
+        throw e;
     }
 
     auto& results = tx->getResult().result.results();
@@ -589,9 +606,8 @@ applyNewTrade(Application& app, uint64 offerId, SecretKey const& source,
     auto& newTradeResult = results[0].tr().newTradeResult();
 
     OfferFrame::pointer offer;
-
     // auto& success = newTradeResult.success().offer;
-    REQUIRE(newTradeResult.code() == NEW_TRADE_CREATED);
+    REQUIRE(newTradeResult.code() == NEW_TRADE_SUCCESS);
     return 0;
 }
 

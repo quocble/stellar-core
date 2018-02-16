@@ -120,7 +120,10 @@ uint64_t applyCreatePassiveOffer(Application& app, SecretKey const& source,
                                  ManageOfferEffect expectedEffect);
 
 uint64_t applyNewTrade(Application& app, uint64 offerId,
-                          SecretKey const& source, Asset const& selling,
+                          SecretKey const& source, 
+                          SecretKey const& a,
+                          SecretKey const& b,  
+                          Asset const& selling,
                           Asset const& buying, Price const& price,
                           int64_t amount, SequenceNumber seq,
                           NewTradeEffect expectedEffect);

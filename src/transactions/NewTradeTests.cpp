@@ -59,7 +59,7 @@ TEST_CASE("new trade", "")
     const Price oneone(1, 1);
 
 
-    SECTION("setup trust")
+    SECTION("simple trade")
     {
         auto a1 = root.create("A", minBalance2 * 2);
         auto b1 = root.create("B", minBalance2 * 2);
@@ -72,7 +72,21 @@ TEST_CASE("new trade", "")
         issuer.pay(a1, idr, trustLineBalance);
         issuer.pay(b1, usd, trustLineBalance);
 
+        // selling IDR, and buying USD
+        uint64_t amount = 100;
         auto market = TestMarket{*app};
-        auto firstOffer = market.newTrade(issuer, {idr, usd, oneone, 100});;        
+        auto firstOffer = market.newTrade(issuer, a1, b1, {idr, usd, oneone, amount});;        
+
+        auto sheepA = loadTrustLine(a1, idr, *app); // SHEEP?
+        auto wheatA = loadTrustLine(a1, usd, *app); // WHEAT
+
+        auto sheepB = loadTrustLine(b1, idr, *app); // SHEEP?
+        auto wheatB = loadTrustLine(b1, usd, *app); // WHEAT
+
+        REQUIRE(sheepA->getBalance() == trustLineBalance - amount);
+        REQUIRE(wheatA->getBalance() == amount);
+
+        REQUIRE(sheepB->getBalance() == amount);
+        REQUIRE(wheatB->getBalance() == trustLineBalance - amount);
     }
 }
