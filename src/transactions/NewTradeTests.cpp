@@ -73,7 +73,7 @@ TEST_CASE("new trade", "")
         issuer.pay(b1, usd, trustLineBalance);
 
         // selling IDR, and buying USD
-        uint64_t amount = 100;
+        int64_t amount = 100;
         auto market = TestMarket{*app};
         auto firstOffer = market.newTrade(issuer, a1, b1, {idr, usd, oneone, amount});;        
 

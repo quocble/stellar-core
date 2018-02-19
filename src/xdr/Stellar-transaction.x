@@ -601,16 +601,32 @@ enum NewTradeResultCode
 
 enum NewTradeEffect
 {
-    NEW_TRADE_CREATED = 0,
+    NEW_TRADE_CREATED = 0
+};
+
+struct NewTradeSuccessResult
+{
+    // offers that got claimed while creating this offer
+    ClaimOfferAtom offersClaimed<>;
+
+    union switch (NewTradeEffect effect)
+    {
+    case NEW_TRADE_CREATED:
+        OfferEntry offer;
+    default:
+        void;
+    }
+    offer;
 };
 
 union NewTradeResult switch (NewTradeResultCode code)
 {
-case NEW_TRADE_SUCCESS:
-    void;
-default:
+    case NEW_TRADE_SUCCESS:
+        NewTradeSuccessResult success;
+    default:
     void;
 };
+
 
 /******* SetOptions Result ********/
 

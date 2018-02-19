@@ -21,6 +21,8 @@ class NewTradeOpFrame : public OperationFrame
     AccountFrame::pointer mAccountA;
     AccountFrame::pointer mAccountB;
 
+    OfferFrame::pointer mTradeOffer;
+
     bool validateAccount(AccountID const&accountId, medida::MetricsRegistry& metrics,
                                     Database& db, LedgerDelta& delta,
                                     TrustFrame::pointer &trustLineWheat,
@@ -36,6 +38,8 @@ class NewTradeOpFrame : public OperationFrame
     }
 
     NewTradeOp const& mNewtrade;
+    OfferEntry buildOffer(AccountID const& account,
+                               NewTradeOp const& op, uint32 flags);
 
   public:
     NewTradeOpFrame(Operation const& op, OperationResult& res,
