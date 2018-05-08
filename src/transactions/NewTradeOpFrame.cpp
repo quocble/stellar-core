@@ -134,10 +134,12 @@ NewTradeOpFrame::checkOfferValid(medida::MetricsRegistry& metrics,
     mAccountA = AccountFrame::loadAccount(delta, buyerAccountId, db); 
     mAccountB = AccountFrame::loadAccount(delta, sellerAccountId, db); 
 
-    if (buyerAccountId == sellerAccountId) {
-        innerResult().code(NEW_TRADE_CROSS_SELF);        
-        return false;
-    }
+// We are okay with cross order, just don't send money
+//
+//    if (buyerAccountId == sellerAccountId) {
+//        innerResult().code(NEW_TRADE_CROSS_SELF);        
+//        return false;
+//    }
 
     if (!validateAccount(buyerAccountId, metrics, db, delta, mSheepLineA, mWheatLineA)) {
         return false;
@@ -162,7 +164,7 @@ NewTradeOpFrame::doApply(Application& app, LedgerDelta& delta,
 
     if (!checkOfferValid(app.getMetrics(), db, delta))
     {
-//        return false;
+        return false;
     }
 
     Asset const& sheep = mNewtrade.selling;
@@ -182,6 +184,8 @@ NewTradeOpFrame::doApply(Application& app, LedgerDelta& delta,
     mTradeOffer = std::make_shared<OfferFrame>(le);
 
     LedgerDelta tempDelta(delta);
+    
+    bool crossing = mAccountA->getID() == mAccountB->getID();
 
     // the maximum is defined by how much wheat it can receive
     int64_t maxWheatCanBuy;
@@ -241,100 +245,102 @@ NewTradeOpFrame::doApply(Application& app, LedgerDelta& delta,
         wheatReceived = 0;
     }
     
-    // BUYER => get the wheat, and deduct the sheep
-    if (wheat.type() == ASSET_TYPE_NATIVE)
-    {
-        if (!mAccountA->addBalance(wheatReceived))
+    if (!crossing) {
+        // BUYER => get the wheat, and deduct the sheep
+        if (wheat.type() == ASSET_TYPE_NATIVE)
         {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer claimed over limit");
+            if (!mAccountA->addBalance(wheatReceived))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer claimed over limit");
+            }
+
+            mAccountA->storeChange(tempDelta, db);
+        }
+        else
+        {
+            if (!mWheatLineA->addBalance(wheatReceived))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer claimed over limit");
+            }
+
+            mWheatLineA->storeChange(tempDelta, db);
         }
 
-        mAccountA->storeChange(tempDelta, db);
-    }
-    else
-    {
-        if (!mWheatLineA->addBalance(wheatReceived))
+        if (sheep.type() == ASSET_TYPE_NATIVE)
         {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer claimed over limit");
+            if (!mAccountA->addBalance(-sheepSent))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer sold more than balance");
+            }
+            mAccountA->storeChange(tempDelta, db);
+        }
+        else
+        {
+            if (!mSheepLineA->addBalance(-sheepSent))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer sold more than balance");
+            }
+            mSheepLineA->storeChange(tempDelta, db);
         }
 
-        mWheatLineA->storeChange(tempDelta, db);
-    }
+        //SELLER => get the sheep, and give the wheat
+        if (wheat.type() == ASSET_TYPE_NATIVE)
+        {
+            if (!mAccountB->addBalance(-wheatReceived))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer claimed over limit");
+            }
 
-    if (sheep.type() == ASSET_TYPE_NATIVE)
-    {
-        if (!mAccountA->addBalance(-sheepSent))
-        {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer sold more than balance");
+            mAccountB->storeChange(tempDelta, db);
         }
-        mAccountA->storeChange(tempDelta, db);
-    }
-    else
-    {
-        if (!mSheepLineA->addBalance(-sheepSent))
+        else
         {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer sold more than balance");
-        }
-        mSheepLineA->storeChange(tempDelta, db);
-    }
+            if (!mWheatLineB->addBalance(-wheatReceived))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer claimed over limit");
+            }
 
-    //SELLER => get the sheep, and give the wheat
-    if (wheat.type() == ASSET_TYPE_NATIVE)
-    {
-        if (!mAccountB->addBalance(-wheatReceived))
-        {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer claimed over limit");
+            mWheatLineB->storeChange(tempDelta, db);
         }
 
-        mAccountB->storeChange(tempDelta, db);
-    }
-    else
-    {
-        if (!mWheatLineB->addBalance(-wheatReceived))
+        if (sheep.type() == ASSET_TYPE_NATIVE)
         {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer claimed over limit");
+            if (!mAccountB->addBalance(sheepSent))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer sold more than balance");
+            }
+            mAccountB->storeChange(tempDelta, db);
+        }
+        else
+        {
+            if (!mSheepLineB->addBalance(sheepSent))
+            {
+                // this would indicate a bug in OfferExchange
+                throw std::runtime_error("offer sold more than balance");
+            }
+            mSheepLineB->storeChange(tempDelta, db);
         }
 
-        mWheatLineB->storeChange(tempDelta, db);
     }
-
-    if (sheep.type() == ASSET_TYPE_NATIVE)
-    {
-        if (!mAccountB->addBalance(sheepSent))
-        {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer sold more than balance");
-        }
-        mAccountB->storeChange(tempDelta, db);
-    }
-    else
-    {
-        if (!mSheepLineB->addBalance(sheepSent))
-        {
-            // this would indicate a bug in OfferExchange
-            throw std::runtime_error("offer sold more than balance");
-        }
-        mSheepLineB->storeChange(tempDelta, db);
-    }
-
     
     // create the offer in the db
     mTradeOffer->mEntry.data.offer().offerID = tempDelta.getHeaderFrame().generateID();
     innerResult().code(NEW_TRADE_SUCCESS);
     innerResult().success().offer.effect(NEW_TRADE_CREATED);
     mTradeOffer->storeAdd(tempDelta, db);
-    innerResult().success().offer.offer() = mTradeOffer->getOffer();
-
     mSourceAccount->storeChange(tempDelta, db);
-
+    
+    
     ClaimOfferAtom atom(mAccountA->getID(), mTradeOffer->getOfferID(), wheat,
                    wheatReceived, sheep, sheepSent);
+    innerResult().success().offer.offer() = mTradeOffer->getOffer();
     innerResult().success().offersClaimed.push_back(atom);
 
     sqlTx.commit();
@@ -350,37 +356,37 @@ NewTradeOpFrame::doApply(Application& app, LedgerDelta& delta,
 bool
 NewTradeOpFrame::doCheckValid(Application& app)
 {
-//    Asset const& sheep = mNewtrade.selling;
-//    Asset const& wheat = mNewtrade.buying;
-//
-//    if (!isAssetValid(sheep) || !isAssetValid(wheat))
-//    {
-//        app.getMetrics()
-//            .NewMeter({"op-new-trade", "invalid", "invalid-asset"},
-//                      "operation")
-//            .Mark();
-//        innerResult().code(NEW_TRADE_MALFORMED);
-//        return false;
-//    }
-//    if (compareAsset(sheep, wheat))
-//    {
-//        app.getMetrics()
-//            .NewMeter({"op-new-trade", "invalid", "equal-currencies"},
-//                      "operation")
-//            .Mark();
-//        innerResult().code(NEW_TRADE_MALFORMED);
-//        return false;
-//    }
-//    if (mNewtrade.amount < 0 || mNewtrade.price.d <= 0 ||
-//        mNewtrade.price.n <= 0)
-//    {
-//        app.getMetrics()
-//            .NewMeter({"op-new-trade", "invalid", "negative-or-zero-values"},
-//                      "operation")
-//            .Mark();
-//        innerResult().code(NEW_TRADE_MALFORMED);
-//        return false;
-//    }
+    Asset const& sheep = mNewtrade.selling;
+    Asset const& wheat = mNewtrade.buying;
+
+    if (!isAssetValid(sheep) || !isAssetValid(wheat))
+    {
+        app.getMetrics()
+            .NewMeter({"op-new-trade", "invalid", "invalid-asset"},
+                      "operation")
+            .Mark();
+        innerResult().code(NEW_TRADE_MALFORMED);
+        return false;
+    }
+    if (compareAsset(sheep, wheat))
+    {
+        app.getMetrics()
+            .NewMeter({"op-new-trade", "invalid", "equal-currencies"},
+                      "operation")
+            .Mark();
+        innerResult().code(NEW_TRADE_MALFORMED);
+        return false;
+    }
+    if (mNewtrade.amount < 0 || mNewtrade.price.d <= 0 ||
+        mNewtrade.price.n <= 0)
+    {
+        app.getMetrics()
+            .NewMeter({"op-new-trade", "invalid", "negative-or-zero-values"},
+                      "operation")
+            .Mark();
+        innerResult().code(NEW_TRADE_MALFORMED);
+        return false;
+    }
 
     return true;
 }
